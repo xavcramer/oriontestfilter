@@ -1,0 +1,145 @@
+set search_path to orionfilter;
+
+CREATE SCHEMA IF NOT EXISTS orion;
+SET search_path TO orion;
+
+-- Справочники
+CREATE TABLE IF NOT EXISTS departure_city (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS country (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS resort (
+  id SERIAL PRIMARY KEY,
+  country_id INT NOT NULL REFERENCES country(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  UNIQUE(country_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS meal_plan (
+  id SERIAL PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,   -- RO, BB, HB, FB, AI
+  name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS currency_rate (
+  code TEXT PRIMARY KEY,       -- rub, usd
+  rate_to_rub NUMERIC(12,4) NOT NULL CHECK(rate_to_rub > 0)
+);
+
+CREATE TABLE IF NOT EXISTS hotel (
+  id SERIAL PRIMARY KEY,
+  resort_id INT NOT NULL REFERENCES resort(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  stars INT NOT NULL CHECK(stars BETWEEN 1 AND 5),
+  max_adults INT NOT NULL DEFAULT 2,
+  max_children INT NOT NULL DEFAULT 2,
+  family_friendly BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE(resort_id, name)
+);
+
+-- Туры
+CREATE TABLE IF NOT EXISTS tour (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  departure_city_id INT NOT NULL REFERENCES departure_city(id),
+  country_id INT NOT NULL REFERENCES country(id),
+  resort_id INT NOT NULL REFERENCES resort(id),
+  hotel_id INT NOT NULL REFERENCES hotel(id),
+  start_date DATE NOT NULL,
+  nights INT NOT NULL CHECK(nights BETWEEN 1 AND 60),
+  meal_plan_id INT NOT NULL REFERENCES meal_plan(id),
+  price_rub NUMERIC(12,2) NOT NULL CHECK(price_rub >= 0),
+  with_flight BOOLEAN NOT NULL DEFAULT FALSE,
+  available BOOLEAN NOT NULL DEFAULT TRUE,
+  is_hot BOOLEAN NOT NULL DEFAULT FALSE,
+  popularity INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  photos TEXT[] NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_tour_country ON tour(country_id);
+CREATE INDEX IF NOT EXISTS idx_tour_resort ON tour(resort_id);
+CREATE INDEX IF NOT EXISTS idx_tour_start_date ON tour(start_date);
+CREATE INDEX IF NOT EXISTS idx_tour_price ON tour(price_rub);
+CREATE INDEX IF NOT EXISTS idx_tour_nights ON tour(nights);
+
+-- Данные
+INSERT INTO departure_city(name) VALUES
+('Калининград'), ('Москва'), ('Санкт-Петербург')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO country(name) VALUES
+('Россия'), ('Турция'), ('ОАЭ')
+ON CONFLICT DO NOTHING;
+
+-- resorts
+INSERT INTO resort(country_id, name)
+SELECT c.id, v.name
+FROM country c
+JOIN (VALUES
+  ('Россия','Сочи'),
+  ('Россия','Геленджик'),
+  ('Россия','Анапа'),
+  ('Турция','Анталья'),
+  ('Турция','Кемер'),
+  ('ОАЭ','Дубай')
+) v(country, name) ON v.country = c.name
+ON CONFLICT DO NOTHING;
+
+INSERT INTO meal_plan(code, name) VALUES
+('RO','Только проживание'),
+('BB','Завтраки'),
+('HB','Полупансион'),
+('FB','Полный пансион'),
+('AI','Всё включено')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO currency_rate(code, rate_to_rub) VALUES
+('rub', 1),
+('usd', 95)  -- пример
+ON CONFLICT (code) DO UPDATE SET rate_to_rub = EXCLUDED.rate_to_rub;
+
+-- hotels (пример)
+INSERT INTO hotel(resort_id, name, stars, max_adults, max_children, family_friendly)
+SELECT r.id, v.name, v.stars, v.max_adults, v.max_children, v.family
+FROM resort r
+JOIN (VALUES
+  ('Геленджик','Ассоль',3,2,1,true),
+  ('Геленджик','Гостевой дом 7Чудес',2,2,2,true),
+  ('Сочи','Приморье',4,2,2,true),
+  ('Анталья','Sun Resort',5,2,2,true),
+  ('Кемер','Green Kemer',4,2,1,true),
+  ('Дубай','Marina View',5,2,2,true)
+) v(resort_name, name, stars, max_adults, max_children, family)
+ON v.resort_name = r.name
+ON CONFLICT DO NOTHING;
+
+-- tours (пример)
+INSERT INTO tour(
+  title, departure_city_id, country_id, resort_id, hotel_id,
+  start_date, nights, meal_plan_id, price_rub, with_flight, available, is_hot, popularity, photos
+)
+SELECT
+  'Отдых у моря: '||h.name,
+  dc.id, c.id, r.id, h.id,
+  (DATE '2025-12-17' + (random()*20)::int),
+  (7 + (random()*7)::int),
+  mp.id,
+  (35000 + (random()*120000))::int,
+  (random() > 0.5),
+  (random() > 0.1),
+  (random() > 0.7),
+  (random()*1000)::int,
+  ARRAY['https://picsum.photos/seed/'||h.id||'/600/400']
+FROM hotel h
+JOIN resort r ON r.id = h.resort_id
+JOIN country c ON c.id = r.country_id
+JOIN departure_city dc ON dc.name IN ('Калининград','Москва','Санкт-Петербург')
+JOIN meal_plan mp ON mp.code IN ('RO','BB','HB','AI')
+LIMIT 120;
