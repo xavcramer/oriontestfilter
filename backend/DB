@@ -1,7 +1,5 @@
-set search_path to orionfilter;
-
-CREATE SCHEMA IF NOT EXISTS orion;
-SET search_path TO orion;
+CREATE SCHEMA IF NOT EXISTS orionfilter;
+SET search_path TO orionfilter;
 
 -- Справочники
 CREATE TABLE IF NOT EXISTS departure_city (
