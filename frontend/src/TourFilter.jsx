@@ -7,6 +7,7 @@ const toStrArray = (arr) => (arr || []).map(String);
 
 export default function App() {
 
+  
   const [departures, setDepartures] = useState([]);
   const [countries, setCountries] = useState([]);
   const [mealPlans, setMealPlans] = useState([]);
