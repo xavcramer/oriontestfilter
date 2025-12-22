@@ -6,19 +6,19 @@ const API = "http://localhost:4000";
 const toStrArray = (arr) => (arr || []).map(String);
 
 export default function App() {
-  // справочники
+
   const [departures, setDepartures] = useState([]);
   const [countries, setCountries] = useState([]);
   const [mealPlans, setMealPlans] = useState([]);
   const [resorts, setResorts] = useState([]);
   const [hotels, setHotels] = useState([]);
 
-  // результаты
+  
   const [data, setData] = useState({ items: [], total: 0, page: 1, pageSize: 12 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // состояние фильтра
+ 
   const [form, setForm] = useState({
     fromId: "",
     countryId: "",
@@ -42,7 +42,7 @@ export default function App() {
     pageSize: 12,
   });
 
-  // параметры для POST /api/tours/search
+ 
   const searchBody = useMemo(() => {
     return {
       ...form,
@@ -59,7 +59,7 @@ export default function App() {
     return r.json();
   }
 
-  // ---- загрузка справочников (GET) ----
+
   async function loadMeta() {
     const [deps, cnts, meals] = await Promise.all([
       fetchJson(`${API}/api/meta/departures`),
@@ -78,7 +78,7 @@ export default function App() {
     setResorts(rs);
   }
 
-  // ---- отели (POST) ----
+ 
   async function loadHotels(resortIdsArr) {
     const hs = await fetchJson(`${API}/api/meta/hotels`, {
       method: "POST",
@@ -88,7 +88,7 @@ export default function App() {
     setHotels(hs);
   }
 
-  // ---- туры (POST) ----
+ 
   async function searchTours(body) {
     return fetchJson(`${API}/api/tours/search`, {
       method: "POST",
@@ -97,26 +97,26 @@ export default function App() {
     });
   }
 
-  // init
+
   useEffect(() => {
     loadMeta().catch(() => setError("Не удалось загрузить справочники. Проверь backend."));
   }, []);
 
-  // resorts when country changes
+
   useEffect(() => {
     loadResorts(form.countryId).catch(() => setError("Не удалось загрузить курорты."));
   }, [form.countryId]);
 
-  // hotels when resorts change
+
   useEffect(() => {
     loadHotels(form.resortIds).catch(() => setError("Не удалось загрузить отели."));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [form.resortIds.join(",")]);
 
-  // первая загрузка списка (без нажатия)
+ 
   useEffect(() => {
     handleSearch(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   async function handleSearch(nextPage) {
@@ -125,7 +125,7 @@ export default function App() {
     try {
       const body = { ...searchBody, page: nextPage || 1 };
 
-      // если страна не выбрана — не фильтруем по курортам/отелям
+     
       if (!body.countryId) {
         body.resortIds = [];
         body.hotelIds = [];
@@ -162,7 +162,7 @@ export default function App() {
   }
 
   function onResortToggle(id) {
-    // при изменении курортов сбрасываем выбранные отели
+   
     setForm((p) => ({ ...p, hotelIds: [], page: 1 }));
     toggleId("resortIds", id);
   }
@@ -172,10 +172,6 @@ export default function App() {
       <header className="header">
         <div>
           <div className="title">Поиск туров</div>
-          <div className="subtitle">React fetch → Express (GET/POST) → PostgreSQL</div>
-        </div>
-        <div className="health">
-          API: <span className="pill">{API}</span>
         </div>
       </header>
 
@@ -500,9 +496,8 @@ export default function App() {
         )}
       </section>
 
-      <footer className="footer">
-        <span className="muted">oriontestfilter · frontend ↔ backend</span>
-      </footer>
+      {/* <footer className="footer">
+      </footer> */}
     </div>
   );
 }

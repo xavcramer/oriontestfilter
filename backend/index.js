@@ -15,7 +15,7 @@ const pool = new Pool({
   options: "-c search_path=orionfilter",
 });
 
-// ---------- helpers ----------
+
 function intOrNull(v) {
   if (v === undefined || v === null || v === "") return null;
   const n = parseInt(String(v), 10);
@@ -66,7 +66,7 @@ function pickSort(v) {
 }
 
 function anyToIntArray(v) {
-  // принимает: [1,2], ["1","2"], "1,2"
+
   if (!v) return [];
   if (Array.isArray(v)) {
     return v.map((x) => parseInt(String(x), 10)).filter(Number.isFinite);
@@ -99,12 +99,12 @@ function pickSortSql(v) {
 }
 
 async function runToursSearch(raw) {
-  // pagination
+
   const page = Math.max(1, intOrNull(raw.page) || 1);
   const pageSize = Math.min(60, Math.max(1, intOrNull(raw.pageSize) || 12));
   const offset = (page - 1) * pageSize;
 
-  // filters
+
   const currency = pickCurrency(raw.currency);
   const sortSql = pickSortSql(raw.sort);
 
@@ -132,12 +132,12 @@ async function runToursSearch(raw) {
   const withFlight = boolOrNull(raw.withFlight);
   const availableOnly = boolOrNull(raw.availableOnly);
 
-  // build SQL
+
   const where = [];
   const values = [];
   let i = 1;
 
-  // валюта нужна для JOIN currency_rate
+  
   values.push(currency);
   const currencyParam = `$${i++}`;
 
@@ -191,7 +191,7 @@ async function runToursSearch(raw) {
     where.push(`t.available = TRUE`);
   }
 
-  // вместимость
+  
   if (adults) {
     values.push(adults);
     where.push(`h.max_adults >= $${i++}`);
@@ -201,7 +201,7 @@ async function runToursSearch(raw) {
     where.push(`h.max_children >= $${i++}`);
   }
 
-  // price in selected currency: t.price_rub / cr.rate_to_rub
+  
   if (priceMin !== null) {
     values.push(priceMin);
     where.push(`(t.price_rub / cr.rate_to_rub) >= $${i++}`);
@@ -222,7 +222,7 @@ async function runToursSearch(raw) {
     JOIN currency_rate cr ON cr.code = ${currencyParam}
   `;
 
-  // list query (добавляем limit/offset)
+
   const listValues = values.slice();
   listValues.push(pageSize);
   const limitParam = `$${i++}`;
@@ -264,7 +264,7 @@ async function runToursSearch(raw) {
   };
 }
 
-// ---------- meta ----------
+
 app.get("/api/meta/departures", async (_, res) => {
   try {
     const r = await pool.query(`SELECT id, name FROM departure_city ORDER BY name`);
@@ -328,16 +328,16 @@ app.get("/api/meta/meal-plans", async (_, res) => {
   }
 });
 
-// ---------- tours filtering ----------
+
 app.get("/api/tours", async (req, res) => {
   try {
-    // pagination
+    
     const page = Math.max(1, intOrNull(req.query.page) || 1);
     const pageSizeRaw = intOrNull(req.query.pageSize) || 12;
     const pageSize = Math.min(60, Math.max(1, pageSizeRaw));
     const offset = (page - 1) * pageSize;
 
-    // filters
+
     const currency = pickCurrency(req.query.currency);
     const sort = pickSort(req.query.sort);
 
@@ -365,12 +365,12 @@ app.get("/api/tours", async (req, res) => {
     const withFlight = boolOrNull(req.query.withFlight);
     const availableOnly = boolOrNull(req.query.availableOnly);
 
-    // build dynamic SQL
+
     const where = [];
     const values = [];
     let i = 1;
 
-    // currency join param (always present)
+    
     values.push(currency);
     const currencyParam = `$${i++}`;
 
@@ -433,7 +433,7 @@ app.get("/api/tours", async (req, res) => {
       where.push(`t.available = TRUE`);
     }
 
-    // вместимость (простая проверка по полям отеля)
+
     if (adults) {
       values.push(adults);
       where.push(`h.max_adults >= $${i++}`);
@@ -443,7 +443,7 @@ app.get("/api/tours", async (req, res) => {
       where.push(`h.max_children >= $${i++}`);
     }
 
-    // price in chosen currency: t.price_rub / cr.rate_to_rub
+   
     if (priceMin !== null) {
       values.push(priceMin);
       where.push(`(t.price_rub / cr.rate_to_rub) >= $${i++}`);
@@ -464,7 +464,7 @@ app.get("/api/tours", async (req, res) => {
       JOIN currency_rate cr ON cr.code = ${currencyParam}
     `;
 
-    // list query (adds limit/offset)
+   
     const valuesForList = values.slice();
     valuesForList.push(pageSize);
     const limitParam = `$${i++}`;
@@ -532,7 +532,7 @@ app.post("/api/meta/hotels", async (req, res) => {
   }
 });
 
-// POST /api/tours/search  (тело: фильтры)
+
 app.post("/api/tours/search", async (req, res) => {
   try {
     const result = await runToursSearch(req.body || {});
